@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Semantic Code Fusion — AI-Powered Code Merger</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+/* ── Theme Variables ── */
+[data-theme="dark"] {
+  --bg:        #0d0d14;
+  --bg2:       #12121c;
+  --surface:   #16161f;
+  --surface2:  #1e1e2a;
+  --surface3:  #252533;
+  --border:    #2c2c3e;
+  --border2:   #3a3a52;
+  --text:      #e2e2f0;
+  --text2:     #a0a0c0;
+  --text3:     #606080;
+  --accent:    #6366f1;
+  --accent-h:  #818cf8;
+  --accent-bg: rgba(99,102,241,0.1);
+  --accent-bdr:rgba(99,102,241,0.3);
+  --green:     #10b981;
+  --green-bg:  rgba(16,185,129,0.1);
+  --amber:     #f59e0b;
+  --red:       #ef4444;
+  --red-bg:    rgba(239,68,68,0.1);
+  --shadow:    0 4px 24px rgba(0,0,0,0.4);
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
+  --invert-icon: 0;
+}
+[data-theme="light"] {
+  --bg:        #f4f4f8;
+  --bg2:       #ebebf2;
+  --surface:   #ffffff;
+  --surface2:  #f8f8fc;
+  --surface3:  #f0f0f6;
+  --border:    #dddde8;
+  --border2:   #c8c8d8;
+  --text:      #1a1a2e;
+  --text2:     #5a5a7a;
+  --text3:     #9090b0;
+  --accent:    #4f46e5;
+  --accent-h:  #6366f1;
+  --accent-bg: rgba(79,70,229,0.08);
+  --accent-bdr:rgba(79,70,229,0.25);
+  --green:     #059669;
+  --green-bg:  rgba(5,150,105,0.08);
+  --amber:     #d97706;
+  --red:       #dc2626;
+  --red-bg:    rgba(220,38,38,0.08);
+  --shadow:    0 4px 24px rgba(0,0,0,0.08);
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.06);
+  --invert-icon: 1;
+}
+
+/* ── Reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.5;
+  transition: background 0.3s, color 0.3s;
+}
+
+/* ── Layout ── */
+.container { max-width: 1280px; margin: 0 auto; padding: 0 20px; }
+
+/* ── Topbar ── */
+.topbar {
+  position: sticky; top: 0; z-index: 100;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-sm);
+}
+.topbar-inner {
+  display: flex; align-items: center; justify-content: space-between;
+  height: 60px;
+}
+.logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.logo-mark {
+  width: 34px; height: 34px; border-radius: 9px;
+  background: linear-gradient(135deg, var(--accent), #8b5cf6);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(99,102,241,0.4);
+}
+.logo-name { font-size: 15px; font-weight: 700; color: var(--text); letter-spacing: -0.3px; }
+.logo-name em { color: var(--accent); font-style: normal; }
+
+.topbar-right { display: flex; align-items: center; gap: 8px; }
+
+.nav-link {
+  padding: 6px 12px; border-radius: 7px;
+  font-size: 13px; font-weight: 500; color: var(--text2);
+  text-decoration: none; border: none; background: none; cursor: pointer;
+  transition: all 0.15s;
+}
+.nav-link:hover { background: var(--surface3); color: var(--text); }
+
+.theme-toggle {
+  width: 36px; height: 36px; border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  font-size: 16px; transition: all 0.2s; flex-shrink: 0;
+}
+.theme-toggle:hover { border-color: var(--accent); background: var(--accent-bg); }
+
+.status-dot {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 500;
+  padding: 5px 10px; border-radius: 100px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text3);
+}
+.status-dot .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text3); }
+.status-dot.online .dot { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 2s infinite; }
+.status-dot.online { color: var(--green); border-color: rgba(16,185,129,0.3); background: var(--green-bg); }
+
+/* ── Hero ── */
+.hero {
+  padding: 56px 0 40px;
+  text-align: center;
+}
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase;
+  padding: 5px 12px; border-radius: 100px;
+  border: 1px solid var(--accent-bdr); background: var(--accent-bg);
+  color: var(--accent); margin-bottom: 20px;
+}
+.hero h1 {
+  font-size: clamp(28px, 4vw, 52px); font-weight: 700;
+  letter-spacing: -1.5px; line-height: 1.1; margin-bottom: 14px;
+  color: var(--text);
+}
+.hero h1 .grad {
+  background: linear-gradient(135deg, var(--accent), #a78bfa);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+.hero-sub {
+  font-size: 15px; color: var(--text2); max-width: 480px; margin: 0 auto 32px;
+  line-height: 1.7; font-weight: 400;
+}
+.hero-stats { display: flex; justify-content: center; gap: 40px; flex-wrap: wrap; }
+.stat { text-align: center; }
+.stat-n { font-size: 26px; font-weight: 700; color: var(--accent); font-family: 'JetBrains Mono', monospace; }
+.stat-l { font-size: 11px; color: var(--text3); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.8px; }
+
+/* ── Cards / Panels ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.2s;
+}
+.card-head {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--surface2);
+}
+.card-title {
+  font-size: 12px; font-weight: 600; letter-spacing: 0.8px;
+  text-transform: uppercase; color: var(--text2);
+  display: flex; align-items: center; gap: 8px;
+}
+.badge {
+  padding: 2px 8px; border-radius: 100px; font-size: 10px; font-weight: 600;
+  letter-spacing: 0.5px; text-transform: uppercase;
+}
+.badge-indigo { background: var(--accent-bg); color: var(--accent); border: 1px solid var(--accent-bdr); }
+.badge-green  { background: var(--green-bg);  color: var(--green);  border: 1px solid rgba(16,185,129,0.3); }
+
+/* ── Editor Grid ── */
+.editor-grid { display: grid; grid-template-columns: 1fr 1fr; }
+.editor-pane { border-right: 1px solid var(--border); }
+.editor-pane:last-child { border-right: none; }
+.editor-head {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface3);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.editor-label {
+  font-size: 11px; font-weight: 600; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--text3);
+  display: flex; align-items: center; gap: 6px;
+}
+.pane-dot { width: 7px; height: 7px; border-radius: 50%; }
+.pane-dot.blue   { background: #6366f1; }
+.pane-dot.violet { background: #8b5cf6; }
+
+select.lang-sel {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; font-weight: 500;
+  padding: 4px 8px; border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer; outline: none;
+  transition: border-color 0.15s;
+}
+select.lang-sel:focus { border-color: var(--accent); }
+
+textarea.code-area {
+  display: block; width: 100%; height: 220px;
+  background: var(--surface);
+  border: none; outline: none; resize: none;
+  color: var(--text); caret-color: var(--accent);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12.5px; line-height: 1.65;
+  padding: 14px 16px;
+  transition: background 0.3s;
+}
+textarea.code-area::placeholder { color: var(--text3); }
+
+/* ── Config Row ── */
+.config-row {
+  padding: 14px 18px;
+  border-top: 1px solid var(--border);
+  background: var(--surface2);
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+}
+.cfg-group { display: flex; align-items: center; gap: 7px; }
+.cfg-label { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.7px; white-space: nowrap; }
+
+select.cfg-sel {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; padding: 6px 10px;
+  border-radius: 7px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text);
+  cursor: pointer; outline: none; transition: border-color 0.15s;
+}
+select.cfg-sel:focus { border-color: var(--accent); }
+
+.toggles { display: flex; gap: 6px; margin-left: auto; }
+.tog {
+  padding: 5px 11px; border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface3); color: var(--text2);
+  font-size: 11px; font-weight: 600; cursor: pointer;
+  display: flex; align-items: center; gap: 5px;
+  transition: all 0.15s; white-space: nowrap;
+}
+.tog.on { background: var(--accent-bg); border-color: var(--accent-bdr); color: var(--accent); }
+
+/* ── Fuse Button ── */
+.fuse-wrap { padding: 18px; display: flex; justify-content: center; background: var(--surface); }
+.fuse-btn {
+  padding: 12px 40px; border-radius: 10px; border: none;
+  background: linear-gradient(135deg, var(--accent), #8b5cf6);
+  color: #fff; font-family: 'Inter', sans-serif;
+  font-size: 14px; font-weight: 600; cursor: pointer;
+  display: flex; align-items: center; gap: 8px;
+  transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+  box-shadow: 0 4px 16px rgba(99,102,241,0.35);
+  letter-spacing: 0.2px;
+}
+.fuse-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(99,102,241,0.45); }
+.fuse-btn:active { transform: translateY(0); }
+.fuse-btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shadow: none; }
+.spinner {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff;
+  animation: spin 0.7s linear infinite; display: none;
+}
+.fuse-btn.loading .spinner { display: block; }
+.fuse-btn.loading .btn-label { opacity: 0.7; }
+
+/* ── Progress Panel ── */
+.prog-panel { display: none; }
+.prog-bar-track { height: 3px; background: var(--surface3); }
+.prog-bar-fill {
+  height: 3px; width: 0%;
+  background: linear-gradient(90deg, var(--accent), #8b5cf6);
+  transition: width 0.4s ease;
+  border-radius: 0 3px 3px 0;
+}
+.pipeline {
+  display: flex; align-items: center;
+  padding: 14px 18px; gap: 0; overflow-x: auto;
+  background: var(--surface);
+}
+.pipe-node {
+  padding: 5px 13px; border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface2); color: var(--text3);
+  font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500;
+  white-space: nowrap; transition: all 0.25s; flex-shrink: 0;
+}
+.pipe-node.active {
+  border-color: var(--accent); color: var(--accent);
+  background: var(--accent-bg);
+  box-shadow: 0 0 10px rgba(99,102,241,0.2);
+}
+.pipe-node.done {
+  border-color: rgba(16,185,129,0.4); color: var(--green);
+  background: var(--green-bg);
+}
+.pipe-arrow { color: var(--border2); padding: 0 6px; font-size: 12px; flex-shrink: 0; transition: color 0.25s; }
+.pipe-arrow.done { color: var(--green); }
+
+/* ── Output ── */
+.out-head {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--surface2);
+}
+.tab-bar { display: flex; gap: 2px; padding: 12px 18px 0; border-bottom: 1px solid var(--border); background: var(--surface); }
+.tab-btn {
+  padding: 7px 14px; border-radius: 7px 7px 0 0;
+  border: none; background: none; color: var(--text3);
+  font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 500;
+  cursor: pointer; transition: all 0.15s; position: relative; bottom: -1px;
+  border: 1px solid transparent; border-bottom: none;
+  display: flex; align-items: center; gap: 5px;
+}
+.tab-btn:hover { color: var(--text2); background: var(--surface2); }
+.tab-btn.active {
+  color: var(--text); background: var(--surface);
+  border-color: var(--border); border-bottom-color: var(--surface);
+}
+.tab-pane { display: none; padding: 18px; background: var(--surface); }
+.tab-pane.active { display: block; }
+
+.code-block {
+  position: relative;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px;
+  font-family: 'JetBrains Mono', monospace; font-size: 12.5px;
+  line-height: 1.65; color: var(--text);
+  white-space: pre-wrap; word-break: break-word;
+  max-height: 420px; overflow-y: auto;
+}
+.copy-btn {
+  position: absolute; top: 10px; right: 10px;
+  padding: 4px 10px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--surface);
+  color: var(--text2); font-family: 'Inter', sans-serif;
+  font-size: 11px; font-weight: 500; cursor: pointer; transition: all 0.15s;
+}
+.copy-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
+
+.explain-block {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 18px;
+  font-size: 13.5px; line-height: 1.8; color: var(--text2);
+  max-height: 420px; overflow-y: auto;
+  white-space: pre-wrap;
+}
+
+/* ── Metrics Grid ── */
+.metrics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.metric-card {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 16px 14px; text-align: center;
+}
+.metric-n { font-size: 22px; font-weight: 700; font-family: 'JetBrains Mono', monospace; margin-bottom: 4px; }
+.metric-n.c1 { color: var(--accent); }
+.metric-n.c2 { color: #8b5cf6; }
+.metric-n.c3 { color: var(--amber); }
+.metric-n.c4 { color: var(--green); }
+.metric-l { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600; }
+
+/* ── Trace List ── */
+.trace-list { display: flex; flex-direction: column; gap: 8px; }
+.trace-item {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 9px; padding: 12px 14px;
+  display: grid; grid-template-columns: 140px 1fr auto; gap: 10px; align-items: start;
+}
+.trace-agent { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; color: var(--accent); }
+.trace-result { font-size: 12.5px; color: var(--text2); line-height: 1.5; }
+.trace-time { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--amber); white-space: nowrap; }
+
+/* ── Error Banner ── */
+.err-banner {
+  display: none; margin-bottom: 14px;
+  background: var(--red-bg); border: 1px solid rgba(239,68,68,0.3);
+  border-radius: 9px; padding: 12px 16px;
+  color: var(--red); font-size: 13px; font-weight: 500;
+}
+
+/* ── Main layout spacing ── */
+.main { padding: 0 0 60px; }
+.stack { display: flex; flex-direction: column; gap: 16px; }
+
+/* ── Divider ── */
+.divider { height: 1px; background: var(--border); margin: 8px 0; }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+/* ── Animations ── */
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.animate-in { animation: fadeIn 0.4s ease both; }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .editor-grid { grid-template-columns: 1fr; }
+  .editor-pane { border-right: none; border-bottom: 1px solid var(--border); }
+  .hero h1 { font-size: 28px; }
+  .hero-stats { gap: 24px; }
+  .config-row { flex-direction: column; align-items: flex-start; }
+  .toggles { margin-left: 0; }
+  .trace-item { grid-template-columns: 1fr; gap: 4px; }
+  .topbar-right .nav-link { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── Topbar ── -->
+<nav class="topbar">
+  <div class="container topbar-inner">
+    <a class="logo" href="/">
+      <div class="logo-mark">⚡</div>
+      <span class="logo-name">Code<em>Fusion</em></span>
+    </a>
+    <div class="topbar-right">
+      <span class="status-dot" id="apiStatus">
+        <span class="dot"></span>
+        <span id="apiStatusText">Checking…</span>
+      </span>
+      <a class="nav-link" href="/docs" target="_blank">API Docs</a>
+      <a class="nav-link" href="/health" target="_blank">Health</a>
+      <button class="theme-toggle" id="themeToggle" title="Toggle theme" onclick="toggleTheme()">🌙</button>
+    </div>
+  </div>
+</nav>
+
+<!-- ── Main ── -->
+<div class="container main">
+
+  <!-- Hero -->
+  <div class="hero animate-in">
+    <div class="hero-badge">⚡ AI-Powered · Multi-Agent · v2.0</div>
+    <h1>Merge Code Across<br/><span class="grad">Any Language</span></h1>
+    <p class="hero-sub">Semantically understands and fuses code snippets from different programming languages using a 6-agent AI pipeline.</p>
+    <div class="hero-stats">
+      <div class="stat"><div class="stat-n">6</div><div class="stat-l">AI Agents</div></div>
+      <div class="stat"><div class="stat-n">10+</div><div class="stat-l">Languages</div></div>
+      <div class="stat"><div class="stat-n">3</div><div class="stat-l">Strategies</div></div>
+    </div>
+  </div>
+
+  <div class="stack">
+
+    <!-- Input Card -->
+    <div class="card animate-in">
+      <div class="card-head">
+        <div class="card-title">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M5.854 4.854a.5.5 0 1 0-.708-.708l-3.5 3.5a.5.5 0 0 0 0 .708l3.5 3.5a.5.5 0 0 0 .708-.708L2.707 8l3.147-3.146zm4.292 0a.5.5 0 0 1 .708-.708l3.5 3.5a.5.5 0 0 1 0 .708l-3.5 3.5a.5.5 0 0 1-.708-.708L13.293 8l-3.147-3.146z"/></svg>
+          Input Code Snippets
+        </div>
+        <span class="badge badge-indigo">Side by Side</span>
+      </div>
+
+      <div class="editor-grid">
+        <!-- Primary -->
+        <div class="editor-pane">
+          <div class="editor-head">
+            <div class="editor-label"><div class="pane-dot blue"></div>Primary Code</div>
+            <select class="lang-sel" id="primaryLang">
+              <option value="python">Python</option>
+              <option value="javascript">JavaScript</option>
+              <option value="typescript">TypeScript</option>
+              <option value="java">Java</option>
+              <option value="cpp">C++</option>
+              <option value="rust">Rust</option>
+              <option value="go">Go</option>
+              <option value="csharp">C#</option>
+              <option value="php">PHP</option>
+              <option value="ruby">Ruby</option>
+            </select>
+          </div>
+          <textarea class="code-area" id="primaryCode" spellcheck="false"
+            placeholder="# Paste your primary code here&#10;def add(a, b):&#10;    return a + b"></textarea>
+        </div>
+
+        <!-- Secondary -->
+        <div class="editor-pane">
+          <div class="editor-head">
+            <div class="editor-label"><div class="pane-dot violet"></div>Secondary Code</div>
+            <select class="lang-sel" id="secondaryLang">
+              <option value="javascript">JavaScript</option>
+              <option value="python">Python</option>
+              <option value="typescript">TypeScript</option>
+              <option value="java">Java</option>
+              <option value="cpp">C++</option>
+              <option value="rust">Rust</option>
+              <option value="go">Go</option>
+              <option value="csharp">C#</option>
+              <option value="php">PHP</option>
+              <option value="ruby">Ruby</option>
+            </select>
+          </div>
+          <textarea class="code-area" id="secondaryCode" spellcheck="false"
+            placeholder="// Paste your secondary code here&#10;const subtract = (a, b) => a - b;"></textarea>
+        </div>
+      </div>
+
+      <!-- Config row -->
+      <div class="config-row">
+        <div class="cfg-group">
+          <span class="cfg-label">Target</span>
+          <select class="cfg-sel" id="targetLang">
+            <option value="python">Python</option>
+            <option value="javascript">JavaScript</option>
+            <option value="typescript">TypeScript</option>
+            <option value="java">Java</option>
+            <option value="go">Go</option>
+            <option value="rust">Rust</option>
+          </select>
+        </div>
+        <div class="cfg-group">
+          <span class="cfg-label">Strategy</span>
+          <select class="cfg-sel" id="strategy">
+            <option value="hybrid">Hybrid</option>
+            <option value="merge">Merge</option>
+            <option value="translate">Translate</option>
+          </select>
+        </div>
+        <div class="toggles">
+          <button class="tog on" id="explainToggle" onclick="toggleOpt('explain')">💬 Explain</button>
+          <button class="tog on" id="testsToggle" onclick="toggleOpt('tests')">🧪 Tests</button>
+        </div>
+      </div>
+
+      <div class="fuse-wrap">
+        <button class="fuse-btn" id="fuseBtn" onclick="runFusion()">
+          <div class="spinner"></div>
+          <span class="btn-label">⚡ Run Fusion</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Pipeline Progress -->
+    <div class="card prog-panel" id="progressPanel">
+      <div class="prog-bar-track">
+        <div class="prog-bar-fill" id="progressBar"></div>
+      </div>
+      <div class="pipeline">
+        <div class="pipe-node" id="agent-Analyzer">Analyzer</div>
+        <div class="pipe-arrow" id="arrow-0">→</div>
+        <div class="pipe-node" id="agent-Planner">Planner</div>
+        <div class="pipe-arrow" id="arrow-1">→</div>
+        <div class="pipe-node" id="agent-Fusion">Fusion</div>
+        <div class="pipe-arrow" id="arrow-2">→</div>
+        <div class="pipe-node" id="agent-Fixer">Fixer</div>
+        <div class="pipe-arrow" id="arrow-3">→</div>
+        <div class="pipe-node" id="agent-Tester">Tester</div>
+        <div class="pipe-arrow" id="arrow-4">→</div>
+        <div class="pipe-node" id="agent-Reviewer">Reviewer</div>
+      </div>
+    </div>
+
+    <!-- Output Card -->
+    <div class="card animate-in" id="outputPanel" style="display:none">
+      <div class="out-head">
+        <div class="card-title">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M6 12.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5zm-2-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5zm-2-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5z"/></svg>
+          Fusion Result
+        </div>
+        <span class="badge badge-green" id="statusBadge">✓ completed</span>
+      </div>
+
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchTab('code',this)">⚡ Fused Code</button>
+        <button class="tab-btn" onclick="switchTab('explain',this)">💬 Explanation</button>
+        <button class="tab-btn" onclick="switchTab('tests',this)">🧪 Tests</button>
+        <button class="tab-btn" onclick="switchTab('metrics',this)">📊 Metrics</button>
+        <button class="tab-btn" onclick="switchTab('traces',this)">🔍 Traces</button>
+      </div>
+
+      <div class="tab-pane active" id="tab-code">
+        <div class="err-banner" id="errorBanner"></div>
+        <div class="code-block" id="codeBlock">
+          <button class="copy-btn" onclick="copyEl('codeContent',this)">Copy</button>
+          <span id="codeContent"></span>
+        </div>
+      </div>
+
+      <div class="tab-pane" id="tab-explain">
+        <div class="explain-block" id="outputExplain"></div>
+      </div>
+
+      <div class="tab-pane" id="tab-tests">
+        <div class="code-block" id="testsBlock">
+          <button class="copy-btn" onclick="copyEl('testsContent',this)">Copy</button>
+          <span id="testsContent"></span>
+        </div>
+      </div>
+
+      <div class="tab-pane" id="tab-metrics">
+        <div class="metrics-grid" id="metricsGrid"></div>
+      </div>
+
+      <div class="tab-pane" id="tab-traces">
+        <div class="trace-list" id="traceList"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── Theme ──
+const html = document.documentElement;
+const saved = localStorage.getItem('theme') || 'dark';
+html.setAttribute('data-theme', saved);
+document.getElementById('themeToggle').textContent = saved === 'dark' ? '🌙' : '☀️';
+
+function toggleTheme() {
+  const cur = html.getAttribute('data-theme');
+  const next = cur === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  localStorage.setItem('theme', next);
+  document.getElementById('themeToggle').textContent = next === 'dark' ? '🌙' : '☀️';
+}
+
+// ── API Status check ──
+async function checkStatus() {
+  const el = document.getElementById('apiStatus');
+  const txt = document.getElementById('apiStatusText');
+  try {
+    const r = await fetch('/health', { signal: AbortSignal.timeout(4000) });
+    if (r.ok) {
+      el.className = 'status-dot online';
+      txt.textContent = 'API Online';
+    } else throw new Error();
+  } catch {
+    el.className = 'status-dot';
+    txt.textContent = 'API Offline';
+  }
+}
+checkStatus();
+setInterval(checkStatus, 15000);
+
+// ── Toggles ──
+const opts = { explain: true, tests: true };
+function toggleOpt(k) {
+  opts[k] = !opts[k];
+  document.getElementById(k + 'Toggle').classList.toggle('on', opts[k]);
+}
+
+// ── Tabs ──
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+// ── Agents ──
+const AGENTS = ['Analyzer','Planner','Fusion','Fixer','Tester','Reviewer'];
+function setAgent(name, state) {
+  const el = document.getElementById('agent-' + name);
+  if (el) el.className = 'pipe-node' + (state ? ' ' + state : '');
+}
+function setProgress(pct) {
+  document.getElementById('progressBar').style.width = pct + '%';
+}
+
+// ── Copy ──
+function copyEl(id, btn) {
+  navigator.clipboard.writeText(document.getElementById(id).textContent).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copied';
+    setTimeout(() => btn.textContent = orig, 2000);
+  });
+}
+
+// ── Fusion ──
+async function runFusion() {
+  const primary = document.getElementById('primaryCode').value.trim();
+  const secondary = document.getElementById('secondaryCode').value.trim();
+  if (!primary || !secondary) {
+    alert('Please paste code in both editors before running fusion.');
+    return;
+  }
+
+  const btn = document.getElementById('fuseBtn');
+  btn.disabled = true; btn.classList.add('loading');
+
+  const prog = document.getElementById('progressPanel');
+  const out  = document.getElementById('outputPanel');
+  const err  = document.getElementById('errorBanner');
+
+  prog.style.display = 'block';
+  out.style.display  = 'none';
+  err.style.display  = 'none';
+
+  AGENTS.forEach(a => setAgent(a, ''));
+  document.querySelectorAll('.pipe-arrow').forEach(a => a.classList.remove('done'));
+  setProgress(5);
+
+  let idx = 0;
+  const timer = setInterval(() => {
+    if (idx < AGENTS.length) {
+      if (idx > 0) {
+        setAgent(AGENTS[idx-1], 'done');
+        const arr = document.getElementById('arrow-' + (idx-1));
+        if (arr) arr.classList.add('done');
+      }
+      setAgent(AGENTS[idx], 'active');
+      setProgress(10 + idx * 14);
+      idx++;
+    }
+  }, 1600);
+
+  try {
+    const payload = {
+      primary:  { code: primary,   language: document.getElementById('primaryLang').value },
+      secondary:{ code: secondary, language: document.getElementById('secondaryLang').value },
+      target_language: document.getElementById('targetLang').value,
+      strategy:        document.getElementById('strategy').value,
+      explain:  opts.explain,
+      run_tests: opts.tests
+    };
+
+    const res = await fetch('/api/v1/fuse', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    clearInterval(timer);
+    setProgress(100);
+    AGENTS.forEach(a => setAgent(a, 'done'));
+    document.querySelectorAll('.pipe-arrow').forEach(a => a.classList.add('done'));
+
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}));
+      throw new Error(e.detail || `HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    renderResult(data);
+
+  } catch(e) {
+    clearInterval(timer);
+    setProgress(0);
+    out.style.display = 'block';
+    err.style.display = 'block';
+    err.textContent   = '✗ ' + e.message;
+    switchTab('code', document.querySelector('.tab-btn'));
+  } finally {
+    btn.disabled = false; btn.classList.remove('loading');
+  }
+}
+
+function renderResult(data) {
+  const out = document.getElementById('outputPanel');
+  out.style.display = 'block';
+
+  document.getElementById('codeContent').textContent    = data.fused_code || '— no code generated —';
+  document.getElementById('outputExplain').textContent  = data.explanation || 'No explanation generated.';
+  document.getElementById('testsContent').textContent   = data.test_cases || 'No tests generated.';
+
+  const m = data.metrics || {};
+  const cards = [
+    { n: m.cosine_similarity != null ? (m.cosine_similarity*100).toFixed(1)+'%' : '—', l: 'Similarity',    c:'c1' },
+    { n: m.processing_time_ms != null ? (m.processing_time_ms/1000).toFixed(1)+'s' : '—', l: 'Process Time', c:'c2' },
+    { n: m.tokens_used || '—',  l: 'Tokens',        c:'c3' },
+    { n: m.lines_added || '—',  l: 'Lines Added',    c:'c4' },
+    { n: m.merge_success_rate != null ? (m.merge_success_rate*100).toFixed(0)+'%' : '—', l: 'Success Rate', c:'c1' },
+    { n: (data.agent_traces||[]).length, l: 'Agents Run', c:'c2' },
+  ];
+  document.getElementById('metricsGrid').innerHTML =
+    cards.map(c => `<div class="metric-card"><div class="metric-n ${c.c}">${c.n}</div><div class="metric-l">${c.l}</div></div>`).join('');
+
+  document.getElementById('traceList').innerHTML =
+    (data.agent_traces||[]).map(t => `
+      <div class="trace-item">
+        <div class="trace-agent">${t.agent}</div>
+        <div class="trace-result">${(t.result||'').substring(0,220)}${(t.result||'').length>220?'…':''}</div>
+        <div class="trace-time">${t.duration_ms ? (t.duration_ms/1000).toFixed(2)+'s' : ''}</div>
+      </div>`).join('');
+
+  switchTab('code', document.querySelector('.tab-btn'));
+}
+</script>
+</body>
+</html>
