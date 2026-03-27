@@ -1,53 +1,100 @@
 """
-app/api/routes/search.py - Semantic code search
+app/api/routes/search.py - Semantic code search endpoints
 """
-import time
-from fastapi import APIRouter, Depends, HTTPException, Request
-from app.core.schemas import SearchRequest, SearchResponse, IndexCodeRequest
+import uuid
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+from typing import List, Optional
 from loguru import logger
+
+from app.vector.store import vector_store
 
 router = APIRouter()
 
 
-@router.post("/search", response_model=SearchResponse, summary="Semantic code search")
-async def search_code(request: SearchRequest, req: Request):
-    """Search indexed code snippets using semantic similarity."""
-    start = time.perf_counter()
-    vector_store = req.app.state.vector_store
+# ── Request / Response models ─────────────────────────────────────────────────
 
+class SearchRequest(BaseModel):
+    query: str
+    top_k: int = 5
+
+
+class SearchResultItem(BaseModel):
+    id: str
+    code: str
+    language: str
+    description: str
+    similarity: float
+
+
+class SearchResponse(BaseModel):
+    query: str
+    results: List[SearchResultItem]
+    total: int
+
+
+class IndexSnippet(BaseModel):
+    code: str
+    language: str = "python"
+    description: str = ""
+
+
+class IndexRequest(BaseModel):
+    snippets: List[IndexSnippet]
+    namespace: str = "default"
+
+
+# ── Endpoints ─────────────────────────────────────────────────────────────────
+
+@router.post("/search", response_model=SearchResponse, summary="Semantic code search")
+def search_code(request: SearchRequest):
+    """Search indexed code snippets using semantic similarity."""
     try:
-        results, search_ms = await vector_store.search(
+        raw_results = vector_store.search(request.query, top_k=request.top_k)
+
+        formatted = []
+        for r in raw_results:
+            formatted.append(SearchResultItem(
+                id=str(r.get("id") or uuid.uuid4()),
+                code=r.get("code") or "",
+                language=r.get("language") or "unknown",
+                description=r.get("description") or "",
+                similarity=float(r.get("similarity", 0.0)),
+            ))
+
+        return SearchResponse(
             query=request.query,
-            top_k=request.top_k,
-            language=request.language.value if request.language else None,
-            min_similarity=request.min_similarity,
+            results=formatted,
+            total=len(formatted),
         )
+
     except Exception as e:
         logger.error(f"Search error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-    return SearchResponse(
-        query=request.query,
-        results=results,
-        total=len(results),
-        search_time_ms=search_ms,
-    )
-
 
 @router.post("/index", summary="Index code snippets for search")
-async def index_snippets(request: IndexCodeRequest, req: Request):
+def index_snippets(request: IndexRequest):
     """Add code snippets to the vector index."""
-    vector_store = req.app.state.vector_store
-    snippets = [
-        {
-            "id": None,
-            "code": s.code,
-            "language": s.language.value,
-            "description": s.description,
-            "metadata": s.metadata,
+    try:
+        snippets = [
+            {
+                "id": str(uuid.uuid4()),
+                "code": s.code,
+                "language": s.language,
+                "description": s.description,
+            }
+            for s in request.snippets
+        ]
+
+        ids = vector_store.upsert(snippets)
+
+        return {
+            "indexed":   len(ids),
+            "ids":       ids,
+            "namespace": request.namespace,
         }
-        for s in request.snippets
-    ]
-    ids = await vector_store.upsert(snippets, namespace=request.namespace)
-    await vector_store.save()
-    return {"indexed": len(ids), "ids": ids, "namespace": request.namespace}
+
+    except Exception as e:
+        logger.error(f"Index error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

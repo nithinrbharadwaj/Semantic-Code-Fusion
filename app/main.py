@@ -16,27 +16,27 @@ from app.config import settings
 from app.api.routes import fusion, search, analyze, jobs, metrics, advanced
 from app.api.middleware import RateLimitMiddleware, RequestLoggingMiddleware
 from app.core.database import init_db
-from app.vector.store import VectorStore
+
+# ── Import the SAME global vector store instance ──────────────────────────────
+from app.vector.store import vector_store
 
 
-# ─── Lifespan ───────────────────────────────────────────────────────────────
+# ─── Lifespan ─────────────────────────────────────────────────────────────────
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Startup and shutdown events."""
     logger.info(f"🚀 Starting {settings.APP_NAME} v{settings.APP_VERSION}")
 
-    # Initialize DB
+    # Database
     await init_db()
     logger.info("✅ Database initialized")
 
-    # Initialize Vector Store
-    vector_store = VectorStore()
-    await vector_store.initialize()
+    # Vector store  (sync call — no await)
+    vector_store.initialize()
     app.state.vector_store = vector_store
     logger.info("✅ Vector store initialized")
 
-    # Create required directories
+    # Ensure directories exist
     os.makedirs("./data/faiss_index", exist_ok=True)
     os.makedirs("./logs", exist_ok=True)
     os.makedirs("./frontend", exist_ok=True)
@@ -45,31 +45,23 @@ async def lifespan(app: FastAPI):
     yield
 
     logger.info("🛑 Shutting down...")
-    await vector_store.save()
-    logger.info("✅ Vector store saved")
+    vector_store.save()
+    logger.info("✅ Shutdown complete")
 
 
-# ─── App Factory ─────────────────────────────────────────────────────────────
+# ─── App factory ──────────────────────────────────────────────────────────────
 
 def create_app() -> FastAPI:
     app = FastAPI(
         title=settings.APP_NAME,
         version=settings.APP_VERSION,
-        description="""
-## Semantic Code Fusion v2.0
-
-An AI-powered system that merges code from different programming languages using:
-- **Semantic Understanding** via CodeBERT embeddings
-- **Multi-Agent Pipeline**: Analyzer → Fusion → Fixer → Tester
-- **Vector Search** with FAISS
-- **AST Parsing** with Tree-sitter
-        """,
+        description="## Semantic Code Fusion v2.0\nAI-powered code merging system.",
         docs_url="/docs",
         redoc_url="/redoc",
         lifespan=lifespan,
     )
 
-    # ── Middleware ──
+    # Middleware
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.allowed_origins_list,
@@ -81,16 +73,16 @@ An AI-powered system that merges code from different programming languages using
     app.add_middleware(RateLimitMiddleware)
     app.add_middleware(RequestLoggingMiddleware)
 
-    # ── Request timing ──
+    # Request timing header
     @app.middleware("http")
     async def add_process_time(request: Request, call_next):
-        start = time.perf_counter()
+        start    = time.perf_counter()
         response = await call_next(request)
-        elapsed = (time.perf_counter() - start) * 1000
+        elapsed  = (time.perf_counter() - start) * 1000
         response.headers["X-Process-Time-Ms"] = f"{elapsed:.2f}"
         return response
 
-    # ── Exception handlers ──
+    # Global exception handler
     @app.exception_handler(Exception)
     async def global_exception_handler(request: Request, exc: Exception):
         logger.error(f"Unhandled exception: {exc}", exc_info=True)
@@ -99,30 +91,33 @@ An AI-powered system that merges code from different programming languages using
             content={"detail": "Internal server error", "error": str(exc)},
         )
 
-    # ── Routes ──
-    app.include_router(fusion.router, prefix="/api/v1", tags=["Fusion"])
-    app.include_router(search.router, prefix="/api/v1", tags=["Search"])
-    app.include_router(analyze.router, prefix="/api/v1", tags=["Analysis"])
-    app.include_router(jobs.router, prefix="/api/v1", tags=["Jobs"])
-    app.include_router(metrics.router, prefix="/api/v1", tags=["Metrics"])
+    # Routes
+    app.include_router(fusion.router,   prefix="/api/v1", tags=["Fusion"])
+    app.include_router(search.router,   prefix="/api/v1", tags=["Search"])
+    app.include_router(analyze.router,  prefix="/api/v1", tags=["Analysis"])
+    app.include_router(jobs.router,     prefix="/api/v1", tags=["Jobs"])
+    app.include_router(metrics.router,  prefix="/api/v1", tags=["Metrics"])
     app.include_router(advanced.router, prefix="/api/v1", tags=["Advanced"])
 
-    # ── Root → serve UI ──
+    # Serve frontend at root
     @app.get("/", include_in_schema=False)
     async def serve_ui():
-        return FileResponse("frontend/index.html")
+        if os.path.exists("frontend/index.html"):
+            return FileResponse("frontend/index.html")
+        return JSONResponse({"message": "Semantic Code Fusion API", "docs": "/docs"})
 
-    # ── Static files (frontend assets) ──
+    # Static files
     if os.path.exists("frontend"):
         app.mount("/static", StaticFiles(directory="frontend"), name="frontend")
 
-    # ── Health check ──
+    # Health check
     @app.get("/health", tags=["Health"])
     async def health():
         return {
-            "status": "healthy",
+            "status":  "healthy",
             "version": settings.APP_VERSION,
             "service": settings.APP_NAME,
+            "vectors": vector_store.stats()["total_vectors"],
         }
 
     return app
